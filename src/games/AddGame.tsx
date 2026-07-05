@@ -1,13 +1,14 @@
 import { useCallback, useState } from "react";
 import ScoreBoard from "../components/ScoreBoard";
 import GameHintPanel from "../components/GameHintPanel";
-import { AddVisualHelper } from "../components/MathVisualHelper";
+import AddTeachAnimation from "../components/AddTeachAnimation";
+import TeachModal from "../components/TeachModal";
 import { Confetti } from "../components/Confetti";
 import AnswerButton from "../components/AnswerButton";
 import GameComplete from "../components/GameComplete";
 import { useGameSession } from "../hooks/useGameSession";
-import { useVanishTapCount } from "../hooks/useVanishTapCount";
 import { buildChoices, COUNT_OBJECTS, pickRandom, randomInt } from "../lib/utils";
+import { stopSpeech } from "../lib/speech";
 
 type Round = {
   a: number;
@@ -29,15 +30,20 @@ function createRound(): Round {
 export default function AddGame() {
   const [round, setRound] = useState<Round>(() => createRound());
   const [wrongPick, setWrongPick] = useState<number | null>(null);
-  const [showVisualHelper, setShowVisualHelper] = useState(false);
-  const tapCount = useVanishTapCount();
+  const [showTeachModal, setShowTeachModal] = useState(false);
+  const [teachPlayKey, setTeachPlayKey] = useState(0);
   const session = useGameSession();
+
+  const openTeach = useCallback(() => {
+    stopSpeech();
+    setShowTeachModal(true);
+    setTeachPlayKey((key) => key + 1);
+  }, []);
 
   const resetRoundState = useCallback(() => {
     setWrongPick(null);
-    setShowVisualHelper(false);
-    tapCount.reset();
-  }, [tapCount]);
+    setShowTeachModal(false);
+  }, []);
 
   const nextRound = useCallback(() => {
     setRound(createRound());
@@ -49,7 +55,6 @@ export default function AddGame() {
     const isCorrect = choice === round.answer;
     if (!isCorrect) {
       setWrongPick(choice);
-      setShowVisualHelper(true);
     }
     session.handleAnswer(isCorrect, {
       onNextRound: nextRound,
@@ -61,8 +66,6 @@ export default function AddGame() {
       },
     });
   };
-
-  const tapDisabled = session.answered || session.hintLoading;
 
   if (session.gameComplete) {
     return (
@@ -81,6 +84,22 @@ export default function AddGame() {
   return (
     <div>
       {session.showConfetti && <Confetti />}
+
+      <TeachModal
+        open={showTeachModal}
+        title="➕ Let's Add!"
+        theme="add"
+        onClose={() => setShowTeachModal(false)}
+        onReplay={() => setTeachPlayKey((key) => key + 1)}
+      >
+        <AddTeachAnimation
+          emoji={round.emoji}
+          a={round.a}
+          b={round.b}
+          answer={round.answer}
+          playKey={teachPlayKey}
+        />
+      </TeachModal>
 
       <div className="mb-6 text-center">
         <h1 className="text-3xl font-bold text-sunshine-dark md:text-4xl">
@@ -118,16 +137,16 @@ export default function AddGame() {
           </div>
         </div>
 
-        {showVisualHelper && (
-          <AddVisualHelper
-            emoji={round.emoji}
-            a={round.a}
-            b={round.b}
-            disabled={tapDisabled}
-            tappedIndices={tapCount.tappedIndices}
-            vanishLabels={tapCount.vanishLabels}
-            onTap={(index) => tapCount.handleTap(index, tapDisabled)}
-          />
+        {wrongPick !== null && (
+          <div className="mt-5 flex justify-center">
+            <button
+              type="button"
+              onClick={openTeach}
+              className="btn-3d rounded-2xl border-4 border-sunshine-dark bg-white px-5 py-2 text-base font-bold text-sunshine-dark hover:bg-sunshine/20 md:text-lg"
+            >
+              📚 Teach me
+            </button>
+          </div>
         )}
       </div>
 

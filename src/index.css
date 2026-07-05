@@ -155,6 +155,68 @@ body {
   animation: count-vanish 0.9s ease-out forwards;
 }
 
+@keyframes teach-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.06);
+  }
+}
+
+.animate-teach-pulse {
+  animation: teach-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes teach-pop {
+  0% {
+    transform: scale(0.2);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.12);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes teach-highlight {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.12);
+    box-shadow: 0 0 0 4px rgba(255, 200, 87, 0.45);
+  }
+}
+
+@keyframes teach-remove {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.85) rotate(-8deg);
+    opacity: 0.35;
+  }
+}
+
+.animate-teach-pop {
+  animation: teach-pop 0.65s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards;
+}
+
+.animate-teach-highlight {
+  animation: teach-highlight 0.7s ease-out;
+}
+
+.animate-teach-remove {
+  animation: teach-remove 0.65s ease-out forwards;
+}
+
 .game-card-shadow {
   box-shadow:
     0 8px 0 rgba(0, 0, 0, 0.12),
