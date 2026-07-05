@@ -1,18 +1,21 @@
 import { useCallback, useMemo, useState } from "react";
 import ScoreBoard from "../components/ScoreBoard";
 import GameHintPanel from "../components/GameHintPanel";
+import { SubtractVisualHelper } from "../components/MathVisualHelper";
 import { Confetti } from "../components/Confetti";
 import AnswerButton from "../components/AnswerButton";
 import GameComplete from "../components/GameComplete";
 import { useGameSession } from "../hooks/useGameSession";
 import { useQuestionRecording } from "../hooks/useQuestionRecording";
-import { buildChoices, randomInt } from "../lib/utils";
+import { useSubtractTapCount } from "../hooks/useVanishTapCount";
+import { buildChoices, COUNT_OBJECTS, pickRandom, randomInt } from "../lib/utils";
 
 type Round = {
   a: number;
   b: number;
   answer: number;
   choices: number[];
+  emoji: string;
 };
 
 function createRound(): Round {
@@ -21,12 +24,14 @@ function createRound(): Round {
   const answer = a - b;
   const choices = buildChoices(answer, 0, 10);
 
-  return { a, b, answer, choices };
+  return { a, b, answer, choices, emoji: pickRandom(COUNT_OBJECTS) };
 }
 
 export default function SubtractGame() {
   const [round, setRound] = useState<Round>(() => createRound());
   const [wrongPick, setWrongPick] = useState<number | null>(null);
+  const [showVisualHelper, setShowVisualHelper] = useState(false);
+  const tapCount = useSubtractTapCount(round.b);
   const session = useGameSession();
   const questionKey = useMemo(
     () => `${session.round}-${round.a}-${round.b}-${round.choices.join(",")}`,
@@ -34,16 +39,23 @@ export default function SubtractGame() {
   );
   useQuestionRecording(session, questionKey);
 
+  const resetRoundState = useCallback(() => {
+    setWrongPick(null);
+    setShowVisualHelper(false);
+    tapCount.reset();
+  }, [tapCount]);
+
   const nextRound = useCallback(() => {
     setRound(createRound());
-    setWrongPick(null);
-  }, []);
+    resetRoundState();
+  }, [resetRoundState]);
 
   const handleChoice = (choice: number) => {
     if (session.answered || session.hintLoading) return;
     const isCorrect = choice === round.answer;
     if (!isCorrect) {
       setWrongPick(choice);
+      setShowVisualHelper(true);
     }
     session.handleAnswer(isCorrect, {
       onNextRound: nextRound,
@@ -55,6 +67,8 @@ export default function SubtractGame() {
       },
     });
   };
+
+  const tapDisabled = session.answered || session.hintLoading;
 
   if (session.gameComplete) {
     return (
@@ -79,7 +93,7 @@ export default function SubtractGame() {
           ➖ Subtract Game
         </h1>
         <p className="mt-2 text-lg font-medium text-ink/70">
-          Take some away — what's left?
+          Take some away — what&apos;s left?
         </p>
       </div>
 
@@ -92,7 +106,7 @@ export default function SubtractGame() {
 
       <GameHintPanel session={session} />
 
-      <div className="mx-auto mb-6 max-w-lg">
+      <div className="mx-auto mb-4 max-w-lg">
         <div className="flex items-center justify-center gap-4 md:gap-6">
           <div className="animate-bounce-in flex h-24 w-24 items-center justify-center rounded-2xl border-4 border-coral-dark bg-coral text-5xl font-bold text-white shadow-lg md:h-28 md:w-28 md:text-6xl">
             {round.a}
@@ -110,26 +124,18 @@ export default function SubtractGame() {
           </div>
         </div>
 
-        <div className="mt-8 rounded-3xl border-4 border-coral-dark/30 bg-white/80 p-6 shadow-lg">
-          <p className="mb-4 text-center text-sm font-semibold uppercase tracking-wide text-coral-dark">
-            Visual helper
-          </p>
-          <div className="flex flex-wrap justify-center gap-2">
-            {Array.from({ length: round.a }, (_, i) => (
-              <span
-                key={i}
-                className={`inline-block text-3xl transition-all duration-300 md:text-4xl ${
-                  i >= round.a - round.b ? "opacity-20 line-through" : ""
-                }`}
-              >
-                🟢
-              </span>
-            ))}
-          </div>
-          <p className="mt-3 text-center text-sm font-medium text-ink/60">
-            Cross out {round.b} — count what's left!
-          </p>
-        </div>
+        {showVisualHelper && (
+          <SubtractVisualHelper
+            emoji={round.emoji}
+            total={round.a}
+            takeAway={round.b}
+            disabled={tapDisabled}
+            removedIndices={tapCount.removedIndices}
+            countedIndices={tapCount.countedIndices}
+            vanishLabels={tapCount.vanishLabels}
+            onTap={(index) => tapCount.handleTap(index, tapDisabled)}
+          />
+        )}
       </div>
 
       <div className="flex flex-wrap justify-center gap-4">

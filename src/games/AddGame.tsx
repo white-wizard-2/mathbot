@@ -1,18 +1,21 @@
 import { useCallback, useMemo, useState } from "react";
 import ScoreBoard from "../components/ScoreBoard";
 import GameHintPanel from "../components/GameHintPanel";
+import { AddVisualHelper } from "../components/MathVisualHelper";
 import { Confetti } from "../components/Confetti";
 import AnswerButton from "../components/AnswerButton";
 import GameComplete from "../components/GameComplete";
 import { useGameSession } from "../hooks/useGameSession";
 import { useQuestionRecording } from "../hooks/useQuestionRecording";
-import { buildChoices, randomInt } from "../lib/utils";
+import { useVanishTapCount } from "../hooks/useVanishTapCount";
+import { buildChoices, COUNT_OBJECTS, pickRandom, randomInt } from "../lib/utils";
 
 type Round = {
   a: number;
   b: number;
   answer: number;
   choices: number[];
+  emoji: string;
 };
 
 function createRound(): Round {
@@ -21,12 +24,14 @@ function createRound(): Round {
   const answer = a + b;
   const choices = buildChoices(answer, 0, 18);
 
-  return { a, b, answer, choices };
+  return { a, b, answer, choices, emoji: pickRandom(COUNT_OBJECTS) };
 }
 
 export default function AddGame() {
   const [round, setRound] = useState<Round>(() => createRound());
   const [wrongPick, setWrongPick] = useState<number | null>(null);
+  const [showVisualHelper, setShowVisualHelper] = useState(false);
+  const tapCount = useVanishTapCount();
   const session = useGameSession();
   const questionKey = useMemo(
     () => `${session.round}-${round.a}-${round.b}-${round.choices.join(",")}`,
@@ -34,16 +39,23 @@ export default function AddGame() {
   );
   useQuestionRecording(session, questionKey);
 
+  const resetRoundState = useCallback(() => {
+    setWrongPick(null);
+    setShowVisualHelper(false);
+    tapCount.reset();
+  }, [tapCount]);
+
   const nextRound = useCallback(() => {
     setRound(createRound());
-    setWrongPick(null);
-  }, []);
+    resetRoundState();
+  }, [resetRoundState]);
 
   const handleChoice = (choice: number) => {
     if (session.answered || session.hintLoading) return;
     const isCorrect = choice === round.answer;
     if (!isCorrect) {
       setWrongPick(choice);
+      setShowVisualHelper(true);
     }
     session.handleAnswer(isCorrect, {
       onNextRound: nextRound,
@@ -55,6 +67,8 @@ export default function AddGame() {
       },
     });
   };
+
+  const tapDisabled = session.answered || session.hintLoading;
 
   if (session.gameComplete) {
     return (
@@ -92,21 +106,35 @@ export default function AddGame() {
 
       <GameHintPanel session={session} />
 
-      <div className="mx-auto mb-8 flex max-w-md items-center justify-center gap-4 md:gap-6">
-        <div className="animate-bounce-in flex h-24 w-24 items-center justify-center rounded-2xl border-4 border-sunshine-dark bg-sunshine text-5xl font-bold text-white shadow-lg md:h-28 md:w-28 md:text-6xl">
-          {round.a}
+      <div className="mx-auto mb-4 max-w-md">
+        <div className="flex items-center justify-center gap-4 md:gap-6">
+          <div className="animate-bounce-in flex h-24 w-24 items-center justify-center rounded-2xl border-4 border-sunshine-dark bg-sunshine text-5xl font-bold text-white shadow-lg md:h-28 md:w-28 md:text-6xl">
+            {round.a}
+          </div>
+          <span className="text-5xl font-bold text-sunshine-dark md:text-6xl">+</span>
+          <div
+            className="animate-bounce-in flex h-24 w-24 items-center justify-center rounded-2xl border-4 border-sunshine-dark bg-sunshine text-5xl font-bold text-white shadow-lg md:h-28 md:w-28 md:text-6xl"
+            style={{ animationDelay: "100ms", opacity: 0 }}
+          >
+            {round.b}
+          </div>
+          <span className="text-5xl font-bold text-ink/40 md:text-6xl">=</span>
+          <div className="flex h-24 w-24 items-center justify-center rounded-2xl border-4 border-dashed border-sunshine-dark/50 bg-white/60 text-5xl font-bold text-ink/30 md:h-28 md:w-28 md:text-6xl">
+            ?
+          </div>
         </div>
-        <span className="text-5xl font-bold text-sunshine-dark md:text-6xl">+</span>
-        <div
-          className="animate-bounce-in flex h-24 w-24 items-center justify-center rounded-2xl border-4 border-sunshine-dark bg-sunshine text-5xl font-bold text-white shadow-lg md:h-28 md:w-28 md:text-6xl"
-          style={{ animationDelay: "100ms", opacity: 0 }}
-        >
-          {round.b}
-        </div>
-        <span className="text-5xl font-bold text-ink/40 md:text-6xl">=</span>
-        <div className="flex h-24 w-24 items-center justify-center rounded-2xl border-4 border-dashed border-sunshine-dark/50 bg-white/60 text-5xl font-bold text-ink/30 md:h-28 md:w-28 md:text-6xl">
-          ?
-        </div>
+
+        {showVisualHelper && (
+          <AddVisualHelper
+            emoji={round.emoji}
+            a={round.a}
+            b={round.b}
+            disabled={tapDisabled}
+            tappedIndices={tapCount.tappedIndices}
+            vanishLabels={tapCount.vanishLabels}
+            onTap={(index) => tapCount.handleTap(index, tapDisabled)}
+          />
+        )}
       </div>
 
       <div className="flex flex-wrap justify-center gap-4">

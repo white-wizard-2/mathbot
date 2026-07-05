@@ -136,6 +136,25 @@ body {
   animation: confetti-fall 2.5s ease-in forwards;
 }
 
+@keyframes count-vanish {
+  0% {
+    transform: translate(-50%, 6px) scale(0.4);
+    opacity: 0;
+  }
+  25% {
+    transform: translate(-50%, -10px) scale(1.25);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -56px) scale(0.7);
+    opacity: 0;
+  }
+}
+
+.animate-count-vanish {
+  animation: count-vanish 0.9s ease-out forwards;
+}
+
 .game-card-shadow {
   box-shadow:
     0 8px 0 rgba(0, 0, 0, 0.12),
