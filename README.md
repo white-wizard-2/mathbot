@@ -16,22 +16,22 @@ npm run dev
 ```
 
 This starts:
-- **Web app** at [http://localhost:5173](http://localhost:5173)
-- **API server** at [http://localhost:3001](http://localhost:3001) (proxied via `/api`)
+- **Web app** at [http://localhost:5174](http://localhost:5174)
+- **On your network** at `http://192.168.1.174:5174` (use your machine's IP)
+- **API server** at port `3001` (proxied via `/api`)
+
+Other devices on the same Wi‑Fi can open the network URL in a browser.
 
 MathBot hints come from the OMLX LLM backend. Configure with env vars:
 
 ```bash
 OMLX_URL=http://192.168.1.105:11435
 OMLX_MODEL=Qwen3.6-35B-A3B-nvfp4
-OMLX_STT_MODEL=whisper-large-v3-turbo
 OMLX_API_KEY=DUMMY
+API_HOST=0.0.0.0
 API_PORT=3001
+WEB_PORT=5174
 ```
-
-Voice hints: the mic records audio → OMLX transcribes it → the text is passed to the LLM as **reference only** (noisy baby speech). Game facts stay the primary source.
-
-Load a speech-to-text model on OMLX (e.g. Whisper) for the mic to work.
 
 ## Scripts
 

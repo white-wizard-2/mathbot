@@ -1,4 +1,4 @@
-import type { HealthResponse, HintRequest, HintResponse, TranscribeResponse } from "../types/hint";
+import type { HealthResponse, HintRequest, HintResponse } from "../types/hint";
 
 function errorFromBody(text: string, status: number): string {
   try {
@@ -30,25 +30,6 @@ export async function fetchHint(payload: HintRequest): Promise<string> {
 
   const body = JSON.parse(text) as HintResponse;
   return body.message;
-}
-
-export async function transcribeAudio(blob: Blob): Promise<string> {
-  const form = new FormData();
-  form.append("audio", blob, "recording.webm");
-
-  const response = await fetch("/api/transcribe", {
-    method: "POST",
-    body: form,
-  });
-
-  const text = await response.text();
-
-  if (!response.ok) {
-    throw new Error(errorFromBody(text, response.status));
-  }
-
-  const body = JSON.parse(text) as TranscribeResponse;
-  return body.text;
 }
 
 export async function fetchHealth(): Promise<HealthResponse> {

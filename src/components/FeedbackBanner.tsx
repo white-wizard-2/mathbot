@@ -48,7 +48,22 @@ export function HintBanner({
       )}
 
       {!loading && hint && (
-        <p className="mt-2 text-xl font-bold leading-tight md:text-2xl">{hint}</p>
+        <div className="mt-3 space-y-2 text-left">
+          {hint.split("\n").map((line, index) => (
+            <p
+              key={index}
+              className={`font-semibold leading-snug ${
+                index === 0
+                  ? "text-base text-ink md:text-lg"
+                  : index === 1
+                    ? "text-sm text-coral-dark md:text-base"
+                    : "text-sm text-sunshine-dark md:text-base"
+              }`}
+            >
+              {line}
+            </p>
+          ))}
+        </div>
       )}
 
       {!loading && error && (

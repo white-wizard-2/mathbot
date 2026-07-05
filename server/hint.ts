@@ -1,37 +1,67 @@
 import type { HintRequest } from "../src/types/hint.js";
 import { chatCompletion } from "./omlx.js";
 
-const SYSTEM_PROMPT = `You are MathBot, a friendly robot helping a 5-year-old with a math game.
+const SYSTEM_PROMPT = `You are MathBot, a warm robot friend helping a 3-year-old with a math game on a tablet.
 
-Give ONE tiny hint when the child is wrong.
+The child picked a wrong answer. Help them understand the question, why their pick is wrong, and what to do.
+
+Write 3 short lines (one sentence each, very simple words):
+
+First wrong try:
+Line 1 — Explain: What the question is about. Use numbers from the question only.
+Line 2 — Why wrong: Say why picking their number does not work. Mention their wrong number.
+Line 3 — Try: One thing to do next on the screen (must match ALLOWED TRY in the user message).
+
+Repeat mistake (same wrong number again):
+Line 1 — Repeat: Say the previous help again (same idea, can shorten slightly).
+Line 2 — Why wrong: Explain again why that same number is still not right.
+Line 3 — Try: Same on-screen tapping and counting idea as before.
 
 Rules:
-- Maximum 8 words total
-- Use very simple words only
-- One short phrase, not a sentence
-- Be warm and fun
-- Tell HOW to try (count, fingers, dots, look)
-- NEVER give the correct answer
-- NEVER say any number that is the answer
-- Do not use number words for the answer (like five, three)
-- One emoji at the start is OK
-- Base your hint on the GAME FACTS below (they are always correct)
-- If a voice note is included, it is noisy baby speech and may be wrong — use it only as soft extra context, never as the main source
-
-Good examples:
-"👆 Count each one!"
-"🖐️ Use your fingers!"
-"👀 Tap every picture!"`;
+- Very simple words for a 3-year-old — short sentences only
+- Friendly and patient
+- NEVER say the secret correct answer
+- NEVER say any number equal to the secret answer
+- Do not use number words for the secret answer
+- One emoji at the start of line 1 only
+- You MAY say the child's wrong pick number and question numbers (like 2, 3, 7)
+- Base everything on GAME FACTS
+- NEVER suggest counting on fingers, hands, or toes — too hard for a 3-year-old
+- Do not suggest mental math, paper, or tricks they cannot do yet`;
 
 const MAX_HINT_ATTEMPTS = 3;
+const MAX_HINT_WORDS = 48;
 
 type HintContext = {
   gameLabel: string;
-  scene: string;
+  explainSetup: string;
+  tryGuidance: string;
   picked: number;
   correctAnswer: number;
-  spokenText?: string;
+  previousHint?: string;
+  isRepeatMistake: boolean;
+  wrongAttempts: number[];
 };
+
+const FINGER_PATTERN = /\b(finger|fingers|hand|hands|toe|toes)\b/i;
+
+function buildTryGuidance(request: HintRequest): string {
+  switch (request.game) {
+    case "count":
+      return `ALLOWED TRY for line 3 (pick one):
+- Tap each picture on the screen and say a number for each tap.
+- Count the pictures out loud as you tap them one by one.`;
+    case "add":
+      return `ALLOWED TRY for line 3 (pick one):
+- Tap each picture in the first group and count them.
+- Then tap each picture in the second group and keep counting.
+- Tap the pictures on the screen one at a time.`;
+    case "subtract":
+      return `ALLOWED TRY for line 3 (pick one):
+- Tap pictures to take some away, then tap what is left and count.
+- Tap the ones to take away first, then count the rest on the screen.`;
+  }
+}
 
 function getCorrectAnswer(request: HintRequest): number {
   switch (request.game) {
@@ -51,48 +81,88 @@ function buildContext(request: HintRequest): HintContext {
     case "count":
       return {
         gameLabel: "Count",
-        scene: `${request.object} pictures on screen`,
+        explainSetup: `The child sees ${request.object} pictures on the screen and must count how many there are.`,
+        tryGuidance: buildTryGuidance(request),
         picked: request.picked,
         correctAnswer,
-        spokenText: request.spokenText,
+        previousHint: request.previousHint,
+        isRepeatMistake: request.isRepeatMistake ?? false,
+        wrongAttempts: request.wrongAttempts ?? [request.picked],
       };
     case "add":
       return {
         gameLabel: "Add",
-        scene: `${request.a} + ${request.b}`,
+        explainSetup: `The question is ${request.a} + ${request.b}. That means ${request.a} things and ${request.b} more things put together. Pictures appear on the screen to tap and count.`,
+        tryGuidance: buildTryGuidance(request),
         picked: request.picked,
         correctAnswer,
-        spokenText: request.spokenText,
+        previousHint: request.previousHint,
+        isRepeatMistake: request.isRepeatMistake ?? false,
+        wrongAttempts: request.wrongAttempts ?? [request.picked],
       };
     case "subtract":
       return {
         gameLabel: "Subtract",
-        scene: `${request.a} − ${request.b}`,
+        explainSetup: `The question is ${request.a} − ${request.b}. That means start with ${request.a} things and take ${request.b} away. Pictures appear on the screen to tap.`,
+        tryGuidance: buildTryGuidance(request),
         picked: request.picked,
         correctAnswer,
-        spokenText: request.spokenText,
+        previousHint: request.previousHint,
+        isRepeatMistake: request.isRepeatMistake ?? false,
+        wrongAttempts: request.wrongAttempts ?? [request.picked],
       };
   }
 }
 
 function buildUserPrompt(context: HintContext, attempt: number): string {
-  const base = `${context.gameLabel}. ${context.scene}. Wrong pick: ${context.picked}. Secret: ${context.correctAnswer}. One tiny hint, max 8 words.`;
+  const attempts = context.wrongAttempts.join(", ");
 
-  const voice = context.spokenText
-    ? `\nVoice note (noisy baby speech, reference only — may be wrong): "${context.spokenText}"\nStay grounded in the game facts above.`
-    : "";
+  let base = `${context.gameLabel} game.
+${context.explainSetup}
+Wrong picks so far on this question: ${attempts}
+Latest wrong pick: ${context.picked}
+Secret answer (NEVER say this): ${context.correctAnswer}`;
+
+  if (context.isRepeatMistake && context.previousHint) {
+    base += `\n\nThis is a REPEAT mistake — the child picked ${context.picked} again.
+Previous help to repeat in line 1:
+"${context.previousHint}"`;
+  }
+
+  base += context.isRepeatMistake
+    ? "\n\nWrite 3 lines: Repeat previous help, explain why that number is still wrong, then what to try."
+    : "\n\nWrite 3 lines: Explain the question, explain why their pick is wrong, then what to try.";
+
+  base += `\n\n${context.tryGuidance}\nNever suggest fingers, hands, or toes.`;
 
   const retry =
-    attempt > 1 ? "\nDo not reveal the secret number or its word form." : "";
+    attempt > 1
+      ? "\nDo not reveal the secret number or its word form. Do not suggest fingers, hands, or toes — only tapping pictures on the screen."
+      : "";
 
-  return `${base}${voice}${retry}`;
+  return `${base}${retry}`;
 }
 
-function trimHint(text: string): string {
+function trimHint(text: string, lineCount: number): string {
   const cleaned = text.replace(/^["']|["']$/g, "").trim();
-  const firstChunk = cleaned.split(/[\n.!?]/)[0]?.trim() ?? cleaned;
-  const words = firstChunk.split(/\s+/).filter(Boolean).slice(0, 8);
-  return words.join(" ");
+  const lines = cleaned
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .slice(0, lineCount);
+
+  if (lines.length >= 2) {
+    const perLine = Math.floor(MAX_HINT_WORDS / lines.length);
+    return lines.map((line) => line.split(/\s+/).slice(0, perLine).join(" ")).join("\n");
+  }
+
+  const sentences = cleaned.match(/[^.!?]+[.!?]?/g)?.map((s) => s.trim()).filter(Boolean) ?? [cleaned];
+  return sentences
+    .slice(0, lineCount)
+    .join(" ")
+    .split(/\s+/)
+    .slice(0, MAX_HINT_WORDS)
+    .join(" ");
 }
 
 const NUMBER_WORDS: Record<number, string[]> = {
@@ -133,6 +203,14 @@ function scrubAnswerLeak(text: string, correctAnswer: number): string {
   return text;
 }
 
+function rejectUnrealisticAdvice(text: string): string {
+  if (FINGER_PATTERN.test(text)) {
+    throw new Error("Hint suggested unrealistic finger counting");
+  }
+
+  return text;
+}
+
 export async function generateHint(request: HintRequest): Promise<string> {
   const context = buildContext(request);
 
@@ -140,6 +218,7 @@ export async function generateHint(request: HintRequest): Promise<string> {
     throw new Error("Picked answer is already correct");
   }
 
+  const lineCount = context.isRepeatMistake && context.previousHint ? 3 : 3;
   let lastError: Error | null = null;
 
   for (let attempt = 1; attempt <= MAX_HINT_ATTEMPTS; attempt += 1) {
@@ -149,13 +228,15 @@ export async function generateHint(request: HintRequest): Promise<string> {
           { role: "system", content: SYSTEM_PROMPT },
           { role: "user", content: buildUserPrompt(context, attempt) },
         ],
-        { maxTokens: 24, temperature: 0.4 },
+        { maxTokens: 96, temperature: 0.35 },
       );
 
-      return scrubAnswerLeak(trimHint(message), context.correctAnswer);
+      return rejectUnrealisticAdvice(
+        scrubAnswerLeak(trimHint(message, lineCount), context.correctAnswer),
+      );
     } catch (error) {
       lastError = error instanceof Error ? error : new Error("Hint generation failed");
-      if (!lastError.message.includes("leaked")) {
+      if (!lastError.message.includes("leaked") && !lastError.message.includes("unrealistic")) {
         throw lastError;
       }
     }

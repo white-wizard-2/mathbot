@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import ScoreBoard from "../components/ScoreBoard";
 import GameHintPanel from "../components/GameHintPanel";
 import { AddVisualHelper } from "../components/MathVisualHelper";
@@ -6,7 +6,6 @@ import { Confetti } from "../components/Confetti";
 import AnswerButton from "../components/AnswerButton";
 import GameComplete from "../components/GameComplete";
 import { useGameSession } from "../hooks/useGameSession";
-import { useQuestionRecording } from "../hooks/useQuestionRecording";
 import { useVanishTapCount } from "../hooks/useVanishTapCount";
 import { buildChoices, COUNT_OBJECTS, pickRandom, randomInt } from "../lib/utils";
 
@@ -33,11 +32,6 @@ export default function AddGame() {
   const [showVisualHelper, setShowVisualHelper] = useState(false);
   const tapCount = useVanishTapCount();
   const session = useGameSession();
-  const questionKey = useMemo(
-    () => `${session.round}-${round.a}-${round.b}-${round.choices.join(",")}`,
-    [session.round, round.a, round.b, round.choices],
-  );
-  useQuestionRecording(session, questionKey);
 
   const resetRoundState = useCallback(() => {
     setWrongPick(null);

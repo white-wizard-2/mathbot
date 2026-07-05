@@ -1,11 +1,10 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import ScoreBoard from "../components/ScoreBoard";
 import GameHintPanel from "../components/GameHintPanel";
 import { Confetti } from "../components/Confetti";
 import AnswerButton from "../components/AnswerButton";
 import GameComplete from "../components/GameComplete";
 import { useGameSession } from "../hooks/useGameSession";
-import { useQuestionRecording } from "../hooks/useQuestionRecording";
 import {
   buildChoices,
   COUNT_OBJECTS,
@@ -40,11 +39,6 @@ export default function CountGame() {
   const [vanishLabels, setVanishLabels] = useState<VanishLabel[]>([]);
   const labelId = useRef(0);
   const session = useGameSession();
-  const questionKey = useMemo(
-    () => `${session.round}-${round.count}-${round.object}-${round.choices.join(",")}`,
-    [session.round, round.count, round.object, round.choices],
-  );
-  useQuestionRecording(session, questionKey);
 
   const resetTapState = useCallback(() => {
     setTappedIndices(new Set());

@@ -1,11 +1,17 @@
+import { useEffect } from "react";
 import { Routes, Route } from "react-router-dom";
 import Layout from "./components/Layout";
 import HomePage from "./pages/HomePage";
 import CountGame from "./games/CountGame";
 import AddGame from "./games/AddGame";
 import SubtractGame from "./games/SubtractGame";
+import { warmupSpeech } from "./lib/speech";
 
 export default function App() {
+  useEffect(() => {
+    warmupSpeech();
+  }, []);
+
   return (
     <Routes>
       <Route element={<Layout />}>

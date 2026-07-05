@@ -1,6 +1,5 @@
 import { useCallback, useRef, useState } from "react";
-import { fetchHint, transcribeAudio } from "../api/hint";
-import { RoundRecorder } from "../lib/roundRecorder";
+import { fetchHint } from "../api/hint";
 import { PRAISE, pickRandom } from "../lib/utils";
 import { speak, stopSpeech } from "../lib/speech";
 import type { HintRequest } from "../types/hint";
@@ -31,44 +30,45 @@ export function useGameSession() {
   const [answered, setAnswered] = useState(false);
   const [gameComplete, setGameComplete] = useState(false);
   const lastHintRequest = useRef<HintRequest | null>(null);
-  const recorderRef = useRef(new RoundRecorder());
+  const lastHintMessage = useRef<string | null>(null);
+  const wrongAttemptsOnQuestion = useRef<number[]>([]);
   const hintGeneration = useRef(0);
 
-  const beginQuestion = useCallback(async () => {
-    try {
-      await recorderRef.current.start();
-    } catch (error) {
-      console.error(error);
-    }
+  const clearQuestionMistakes = useCallback(() => {
+    lastHintMessage.current = null;
+    wrongAttemptsOnQuestion.current = [];
   }, []);
 
-  const requestWrongHint = useCallback(async (hintRequest: HintRequest, audio: Blob | null) => {
+  const requestWrongHint = useCallback(async (
+    hintRequest: HintRequest,
+    options?: { skipAttemptRecord?: boolean },
+  ) => {
     const generation = hintGeneration.current;
-    lastHintRequest.current = hintRequest;
+    const picked = hintRequest.picked;
+    const isRepeatMistake = wrongAttemptsOnQuestion.current.includes(picked);
+
+    if (!options?.skipAttemptRecord) {
+      wrongAttemptsOnQuestion.current.push(picked);
+    }
+
     setHintOpen(true);
     setHintError(null);
     setHint(null);
     setHintLoading(true);
 
-    let spokenText: string | undefined;
-
-    if (audio) {
-      try {
-        spokenText = await transcribeAudio(audio);
-      } catch {
-        spokenText = undefined;
-      }
-    }
-
-    if (generation !== hintGeneration.current) return;
-
     try {
-      const payload = spokenText ? { ...hintRequest, spokenText } : hintRequest;
+      const payload: HintRequest = {
+        ...hintRequest,
+        previousHint: lastHintMessage.current ?? undefined,
+        isRepeatMistake,
+        wrongAttempts: [...wrongAttemptsOnQuestion.current],
+      };
       lastHintRequest.current = payload;
       const message = await fetchHint(payload);
       if (generation !== hintGeneration.current) return;
+      lastHintMessage.current = message;
       setHint(message);
-      speak(message);
+      speak(message, { mode: "hint" });
     } catch (error) {
       if (generation !== hintGeneration.current) return;
       const detail = error instanceof Error ? error.message : "Could not reach MathBot";
@@ -77,15 +77,14 @@ export function useGameSession() {
     } finally {
       if (generation === hintGeneration.current) {
         setHintLoading(false);
-        void beginQuestion();
       }
     }
-  }, [beginQuestion]);
+  }, []);
 
   const retryHint = useCallback(() => {
     if (lastHintRequest.current) {
       hintGeneration.current += 1;
-      void requestWrongHint(lastHintRequest.current, null);
+      void requestWrongHint(lastHintRequest.current, { skipAttemptRecord: true });
     }
   }, [requestWrongHint]);
 
@@ -93,56 +92,47 @@ export function useGameSession() {
     (isCorrect: boolean, { onNextRound, hintRequest }: HandleAnswerOptions) => {
       if (answered) return;
 
-      void (async () => {
-        let audio: Blob | null = null;
-        try {
-          audio = await recorderRef.current.stop();
-        } catch (error) {
-          console.error(error);
-        }
+      if (isCorrect) {
+        hintGeneration.current += 1;
+        stopSpeech();
+        setHint(null);
+        setHintError(null);
+        setHintLoading(false);
+        setHintOpen(false);
+        clearQuestionMistakes();
+        setScore((s) => s + 1);
+        setStreak((s) => s + 1);
+        const praise = pickRandom(PRAISE);
+        setFeedback({ type: "correct", message: praise });
+        speak(praise, { mode: "praise" });
+        setShowConfetti(true);
+        setAnswered(true);
 
-        if (isCorrect) {
-          hintGeneration.current += 1;
-          stopSpeech();
-          setHint(null);
-          setHintError(null);
-          setHintLoading(false);
-          setHintOpen(false);
-          setScore((s) => s + 1);
-          setStreak((s) => s + 1);
-          const praise = pickRandom(PRAISE);
-          setFeedback({ type: "correct", message: praise });
-          speak(praise);
-          setShowConfetti(true);
-          setAnswered(true);
+        window.setTimeout(() => {
+          setFeedback(null);
+          setShowConfetti(false);
+          setAnswered(false);
 
-          window.setTimeout(() => {
-            setFeedback(null);
-            setShowConfetti(false);
-            setAnswered(false);
-
-            if (round >= TOTAL_ROUNDS) {
-              setGameComplete(true);
-            } else {
-              setRound((r) => r + 1);
-              onNextRound();
-            }
-          }, CORRECT_DELAY_MS);
-        } else {
-          setStreak(0);
-          setHintLoading(true);
-          hintGeneration.current += 1;
-          await requestWrongHint(hintRequest, audio);
-        }
-      })();
+          if (round >= TOTAL_ROUNDS) {
+            setGameComplete(true);
+          } else {
+            setRound((r) => r + 1);
+            onNextRound();
+          }
+        }, CORRECT_DELAY_MS);
+      } else {
+        setStreak(0);
+        hintGeneration.current += 1;
+        void requestWrongHint(hintRequest);
+      }
     },
-    [answered, round, requestWrongHint],
+    [answered, round, requestWrongHint, clearQuestionMistakes],
   );
 
   const resetGame = useCallback(() => {
     hintGeneration.current += 1;
-    recorderRef.current.cancel();
     stopSpeech();
+    clearQuestionMistakes();
     setScore(0);
     setStreak(0);
     setRound(1);
@@ -155,7 +145,7 @@ export function useGameSession() {
     setAnswered(false);
     setGameComplete(false);
     lastHintRequest.current = null;
-  }, []);
+  }, [clearQuestionMistakes]);
 
   return {
     score,
@@ -170,7 +160,6 @@ export function useGameSession() {
     answered,
     gameComplete,
     totalRounds: TOTAL_ROUNDS,
-    beginQuestion,
     handleAnswer,
     retryHint,
     resetGame,

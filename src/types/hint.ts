@@ -1,6 +1,8 @@
 export type HintBase = {
   picked: number;
-  spokenText?: string;
+  previousHint?: string;
+  isRepeatMistake?: boolean;
+  wrongAttempts?: number[];
 };
 
 export type HintRequest =
@@ -12,13 +14,8 @@ export type HintResponse = {
   message: string;
 };
 
-export type TranscribeResponse = {
-  text: string;
-};
-
 export type HealthResponse = {
   ok: boolean;
   model: string;
-  sttModel: string | null;
   omlxUrl: string;
 };
