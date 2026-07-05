@@ -13,18 +13,24 @@ Rules:
 - Tell HOW to try (count, fingers, dots, look)
 - NEVER give the correct answer
 - NEVER say any number that is the answer
+- Do not use number words for the answer (like five, three)
 - One emoji at the start is OK
+- Base your hint on the GAME FACTS below (they are always correct)
+- If a voice note is included, it is noisy baby speech and may be wrong — use it only as soft extra context, never as the main source
 
 Good examples:
 "👆 Count each one!"
 "🖐️ Use your fingers!"
 "👀 Tap every picture!"`;
 
+const MAX_HINT_ATTEMPTS = 3;
+
 type HintContext = {
   gameLabel: string;
   scene: string;
   picked: number;
   correctAnswer: number;
+  spokenText?: string;
 };
 
 function getCorrectAnswer(request: HintRequest): number {
@@ -48,6 +54,7 @@ function buildContext(request: HintRequest): HintContext {
         scene: `${request.object} pictures on screen`,
         picked: request.picked,
         correctAnswer,
+        spokenText: request.spokenText,
       };
     case "add":
       return {
@@ -55,6 +62,7 @@ function buildContext(request: HintRequest): HintContext {
         scene: `${request.a} + ${request.b}`,
         picked: request.picked,
         correctAnswer,
+        spokenText: request.spokenText,
       };
     case "subtract":
       return {
@@ -62,12 +70,22 @@ function buildContext(request: HintRequest): HintContext {
         scene: `${request.a} − ${request.b}`,
         picked: request.picked,
         correctAnswer,
+        spokenText: request.spokenText,
       };
   }
 }
 
-function buildUserPrompt(context: HintContext): string {
-  return `${context.gameLabel}. ${context.scene}. Wrong pick: ${context.picked}. Secret: ${context.correctAnswer}. One tiny hint, max 8 words.`;
+function buildUserPrompt(context: HintContext, attempt: number): string {
+  const base = `${context.gameLabel}. ${context.scene}. Wrong pick: ${context.picked}. Secret: ${context.correctAnswer}. One tiny hint, max 8 words.`;
+
+  const voice = context.spokenText
+    ? `\nVoice note (noisy baby speech, reference only — may be wrong): "${context.spokenText}"\nStay grounded in the game facts above.`
+    : "";
+
+  const retry =
+    attempt > 1 ? "\nDo not reveal the secret number or its word form." : "";
+
+  return `${base}${voice}${retry}`;
 }
 
 function trimHint(text: string): string {
@@ -77,11 +95,41 @@ function trimHint(text: string): string {
   return words.join(" ");
 }
 
+const NUMBER_WORDS: Record<number, string[]> = {
+  0: ["zero"],
+  1: ["one"],
+  2: ["two"],
+  3: ["three"],
+  4: ["four"],
+  5: ["five"],
+  6: ["six"],
+  7: ["seven"],
+  8: ["eight"],
+  9: ["nine"],
+  10: ["ten"],
+  11: ["eleven"],
+  12: ["twelve"],
+  13: ["thirteen"],
+  14: ["fourteen"],
+  15: ["fifteen"],
+  16: ["sixteen"],
+  17: ["seventeen"],
+  18: ["eighteen"],
+};
+
 function scrubAnswerLeak(text: string, correctAnswer: number): string {
-  const answerPattern = new RegExp(`\\b${correctAnswer}\\b`, "g");
-  if (answerPattern.test(text)) {
+  const lower = text.toLowerCase();
+  const digitPattern = new RegExp(`\\b${correctAnswer}\\b`);
+  if (digitPattern.test(text)) {
     throw new Error("Hint leaked the correct answer");
   }
+
+  for (const word of NUMBER_WORDS[correctAnswer] ?? []) {
+    if (new RegExp(`\\b${word}\\b`, "i").test(lower)) {
+      throw new Error("Hint leaked the correct answer");
+    }
+  }
+
   return text;
 }
 
@@ -92,13 +140,26 @@ export async function generateHint(request: HintRequest): Promise<string> {
     throw new Error("Picked answer is already correct");
   }
 
-  const message = await chatCompletion(
-    [
-      { role: "system", content: SYSTEM_PROMPT },
-      { role: "user", content: buildUserPrompt(context) },
-    ],
-    { maxTokens: 24, temperature: 0.4 },
-  );
+  let lastError: Error | null = null;
 
-  return scrubAnswerLeak(trimHint(message), context.correctAnswer);
+  for (let attempt = 1; attempt <= MAX_HINT_ATTEMPTS; attempt += 1) {
+    try {
+      const message = await chatCompletion(
+        [
+          { role: "system", content: SYSTEM_PROMPT },
+          { role: "user", content: buildUserPrompt(context, attempt) },
+        ],
+        { maxTokens: 24, temperature: 0.4 },
+      );
+
+      return scrubAnswerLeak(trimHint(message), context.correctAnswer);
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error("Hint generation failed");
+      if (!lastError.message.includes("leaked")) {
+        throw lastError;
+      }
+    }
+  }
+
+  throw lastError ?? new Error("Hint generation failed");
 }

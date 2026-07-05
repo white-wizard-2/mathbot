@@ -19,11 +19,18 @@ export default function FeedbackBanner({ type, message }: FeedbackBannerProps) {
 type HintBannerProps = {
   hint: string | null;
   loading: boolean;
+  loadingLabel?: string;
   error: string | null;
   onRetry: () => void;
 };
 
-export function HintBanner({ hint, loading, error, onRetry }: HintBannerProps) {
+export function HintBanner({
+  hint,
+  loading,
+  loadingLabel = "Thinking",
+  error,
+  onRetry,
+}: HintBannerProps) {
   if (!loading && !hint && !error) return null;
 
   return (
@@ -35,7 +42,8 @@ export function HintBanner({ hint, loading, error, onRetry }: HintBannerProps) {
 
       {loading && (
         <p className="mt-2 text-base font-semibold">
-          Thinking<span className="animate-pulse">...</span>
+          {loadingLabel}
+          <span className="animate-pulse">...</span>
         </p>
       )}
 

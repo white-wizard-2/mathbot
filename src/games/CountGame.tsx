@@ -1,10 +1,11 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import ScoreBoard from "../components/ScoreBoard";
-import FeedbackBanner, { HintBanner } from "../components/FeedbackBanner";
+import GameHintPanel from "../components/GameHintPanel";
 import { Confetti } from "../components/Confetti";
 import AnswerButton from "../components/AnswerButton";
 import GameComplete from "../components/GameComplete";
 import { useGameSession } from "../hooks/useGameSession";
+import { useQuestionRecording } from "../hooks/useQuestionRecording";
 import {
   buildChoices,
   COUNT_OBJECTS,
@@ -30,6 +31,11 @@ export default function CountGame() {
   const [round, setRound] = useState<Round>(() => createRound());
   const [wrongPick, setWrongPick] = useState<number | null>(null);
   const session = useGameSession();
+  const questionKey = useMemo(
+    () => `${session.round}-${round.count}-${round.object}-${round.choices.join(",")}`,
+    [session.round, round.count, round.object, round.choices],
+  );
+  useQuestionRecording(session, questionKey);
 
   const nextRound = useCallback(() => {
     setRound(createRound());
@@ -37,7 +43,7 @@ export default function CountGame() {
   }, []);
 
   const handleChoice = (choice: number) => {
-    if (session.answered) return;
+    if (session.answered || session.hintLoading) return;
     const isCorrect = choice === round.count;
     if (!isCorrect) {
       setWrongPick(choice);
@@ -87,19 +93,7 @@ export default function CountGame() {
         totalRounds={session.totalRounds}
       />
 
-      {(session.hintLoading || session.hint || session.hintError) && !session.feedback && (
-        <HintBanner
-          hint={session.hint}
-          loading={session.hintLoading}
-          error={session.hintError}
-          onRetry={session.retryHint}
-        />
-      )}
-
-      <FeedbackBanner
-        type={session.feedback?.type ?? null}
-        message={session.feedback?.message ?? ""}
-      />
+      <GameHintPanel session={session} />
 
       <div className="mx-auto mb-8 max-w-lg rounded-3xl border-4 border-grass-dark/40 bg-white/80 p-6 shadow-lg backdrop-blur-sm md:p-8">
         <div className="flex flex-wrap justify-center gap-3 md:gap-4">
@@ -118,7 +112,7 @@ export default function CountGame() {
       <div className="flex flex-wrap justify-center gap-4">
         {round.choices.map((choice) => {
           let variant: "default" | "correct" | "wrong" = "default";
-          if (session.answered && choice === round.count) {
+          if (session.feedback && choice === round.count) {
             variant = "correct";
           } else if (wrongPick === choice) {
             variant = "wrong";
@@ -129,7 +123,7 @@ export default function CountGame() {
               key={choice}
               value={choice}
               onClick={() => handleChoice(choice)}
-              disabled={session.answered}
+              disabled={session.answered || session.hintLoading}
               variant={variant}
             />
           );

@@ -1,12 +1,18 @@
-import type { HealthResponse, HintRequest, HintResponse } from "../types/hint";
+import type { HealthResponse, HintRequest, HintResponse, TranscribeResponse } from "../types/hint";
 
-async function parseError(response: Response): Promise<string> {
+function errorFromBody(text: string, status: number): string {
   try {
-    const body = (await response.json()) as { error?: string };
-    return body.error ?? `Request failed (${response.status})`;
+    const body = JSON.parse(text) as { error?: string };
+    if (body.error) return body.error;
   } catch {
-    return `Request failed (${response.status})`;
+    /* not json */
   }
+
+  if (status === 500) {
+    return "MathBot server is not running. Run npm run dev.";
+  }
+
+  return `Request failed (${status})`;
 }
 
 export async function fetchHint(payload: HintRequest): Promise<string> {
@@ -16,12 +22,33 @@ export async function fetchHint(payload: HintRequest): Promise<string> {
     body: JSON.stringify(payload),
   });
 
+  const text = await response.text();
+
   if (!response.ok) {
-    throw new Error(await parseError(response));
+    throw new Error(errorFromBody(text, response.status));
   }
 
-  const body = (await response.json()) as HintResponse;
+  const body = JSON.parse(text) as HintResponse;
   return body.message;
+}
+
+export async function transcribeAudio(blob: Blob): Promise<string> {
+  const form = new FormData();
+  form.append("audio", blob, "recording.webm");
+
+  const response = await fetch("/api/transcribe", {
+    method: "POST",
+    body: form,
+  });
+
+  const text = await response.text();
+
+  if (!response.ok) {
+    throw new Error(errorFromBody(text, response.status));
+  }
+
+  const body = JSON.parse(text) as TranscribeResponse;
+  return body.text;
 }
 
 export async function fetchHealth(): Promise<HealthResponse> {

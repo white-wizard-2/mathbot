@@ -20,11 +20,17 @@ type ChatResponse = {
 
 let resolvedModelId: string | null = null;
 
-function omlxHeaders(): HeadersInit {
+export function getOmlxAuthHeaders(): HeadersInit {
   return {
-    "Content-Type": "application/json",
     Authorization: `Bearer ${OMLX_API_KEY}`,
     "x-api-key": OMLX_API_KEY,
+  };
+}
+
+function omlxHeaders(): HeadersInit {
+  return {
+    ...getOmlxAuthHeaders(),
+    "Content-Type": "application/json",
   };
 }
 
@@ -35,7 +41,7 @@ export function getResolvedModelId(): string {
   return resolvedModelId;
 }
 
-function matchesModel(id: string, target: string): boolean {
+export function matchesModel(id: string, target: string): boolean {
   const normalizedId = id.toLowerCase().replace(/[^a-z0-9]/g, "");
   const normalizedTarget = target.toLowerCase().replace(/[^a-z0-9]/g, "");
   return normalizedId.includes(normalizedTarget) || normalizedTarget.includes(normalizedId);

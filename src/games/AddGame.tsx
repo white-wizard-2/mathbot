@@ -1,10 +1,11 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import ScoreBoard from "../components/ScoreBoard";
-import FeedbackBanner, { HintBanner } from "../components/FeedbackBanner";
+import GameHintPanel from "../components/GameHintPanel";
 import { Confetti } from "../components/Confetti";
 import AnswerButton from "../components/AnswerButton";
 import GameComplete from "../components/GameComplete";
 import { useGameSession } from "../hooks/useGameSession";
+import { useQuestionRecording } from "../hooks/useQuestionRecording";
 import { buildChoices, randomInt } from "../lib/utils";
 
 type Round = {
@@ -27,6 +28,11 @@ export default function AddGame() {
   const [round, setRound] = useState<Round>(() => createRound());
   const [wrongPick, setWrongPick] = useState<number | null>(null);
   const session = useGameSession();
+  const questionKey = useMemo(
+    () => `${session.round}-${round.a}-${round.b}-${round.choices.join(",")}`,
+    [session.round, round.a, round.b, round.choices],
+  );
+  useQuestionRecording(session, questionKey);
 
   const nextRound = useCallback(() => {
     setRound(createRound());
@@ -34,7 +40,7 @@ export default function AddGame() {
   }, []);
 
   const handleChoice = (choice: number) => {
-    if (session.answered) return;
+    if (session.answered || session.hintLoading) return;
     const isCorrect = choice === round.answer;
     if (!isCorrect) {
       setWrongPick(choice);
@@ -84,19 +90,7 @@ export default function AddGame() {
         totalRounds={session.totalRounds}
       />
 
-      {(session.hintLoading || session.hint || session.hintError) && !session.feedback && (
-        <HintBanner
-          hint={session.hint}
-          loading={session.hintLoading}
-          error={session.hintError}
-          onRetry={session.retryHint}
-        />
-      )}
-
-      <FeedbackBanner
-        type={session.feedback?.type ?? null}
-        message={session.feedback?.message ?? ""}
-      />
+      <GameHintPanel session={session} />
 
       <div className="mx-auto mb-8 flex max-w-md items-center justify-center gap-4 md:gap-6">
         <div className="animate-bounce-in flex h-24 w-24 items-center justify-center rounded-2xl border-4 border-sunshine-dark bg-sunshine text-5xl font-bold text-white shadow-lg md:h-28 md:w-28 md:text-6xl">
@@ -118,7 +112,7 @@ export default function AddGame() {
       <div className="flex flex-wrap justify-center gap-4">
         {round.choices.map((choice) => {
           let variant: "default" | "correct" | "wrong" = "default";
-          if (session.answered && choice === round.answer) {
+          if (session.feedback && choice === round.answer) {
             variant = "correct";
           } else if (wrongPick === choice) {
             variant = "wrong";
@@ -129,7 +123,7 @@ export default function AddGame() {
               key={choice}
               value={choice}
               onClick={() => handleChoice(choice)}
-              disabled={session.answered}
+              disabled={session.answered || session.hintLoading}
               variant={variant}
             />
           );

@@ -24,11 +24,14 @@ MathBot hints come from the OMLX LLM backend. Configure with env vars:
 ```bash
 OMLX_URL=http://192.168.1.105:11435
 OMLX_MODEL=Qwen3.6-35B-A3B-nvfp4
+OMLX_STT_MODEL=whisper-large-v3-turbo
 OMLX_API_KEY=DUMMY
 API_PORT=3001
 ```
 
-The API loads the model on startup via `GET /v1/models` and a warmup chat request.
+Voice hints: the mic records audio → OMLX transcribes it → the text is passed to the LLM as **reference only** (noisy baby speech). Game facts stay the primary source.
+
+Load a speech-to-text model on OMLX (e.g. Whisper) for the mic to work.
 
 ## Scripts
 
