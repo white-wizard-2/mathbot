@@ -15,7 +15,20 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:5173](http://localhost:5173).
+This starts:
+- **Web app** at [http://localhost:5173](http://localhost:5173)
+- **API server** at [http://localhost:3001](http://localhost:3001) (proxied via `/api`)
+
+MathBot hints come from the OMLX LLM backend. Configure with env vars:
+
+```bash
+OMLX_URL=http://192.168.1.105:11435
+OMLX_MODEL=Qwen3.6-35B-A3B-nvfp4
+OMLX_API_KEY=DUMMY
+API_PORT=3001
+```
+
+The API loads the model on startup via `GET /v1/models` and a warmup chat request.
 
 ## Scripts
 

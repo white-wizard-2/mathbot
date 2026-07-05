@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import ScoreBoard from "../components/ScoreBoard";
-import FeedbackBanner, { Confetti } from "../components/FeedbackBanner";
+import FeedbackBanner, { HintBanner } from "../components/FeedbackBanner";
+import { Confetti } from "../components/Confetti";
 import AnswerButton from "../components/AnswerButton";
 import GameComplete from "../components/GameComplete";
 import { useGameSession } from "../hooks/useGameSession";
@@ -24,18 +25,29 @@ function createRound(): Round {
 
 export default function AddGame() {
   const [round, setRound] = useState<Round>(() => createRound());
-  const [selected, setSelected] = useState<number | null>(null);
+  const [wrongPick, setWrongPick] = useState<number | null>(null);
   const session = useGameSession();
 
   const nextRound = useCallback(() => {
     setRound(createRound());
-    setSelected(null);
+    setWrongPick(null);
   }, []);
 
   const handleChoice = (choice: number) => {
     if (session.answered) return;
-    setSelected(choice);
-    session.handleAnswer(choice === round.answer, nextRound);
+    const isCorrect = choice === round.answer;
+    if (!isCorrect) {
+      setWrongPick(choice);
+    }
+    session.handleAnswer(isCorrect, {
+      onNextRound: nextRound,
+      hintRequest: {
+        game: "add",
+        a: round.a,
+        b: round.b,
+        picked: choice,
+      },
+    });
   };
 
   if (session.gameComplete) {
@@ -72,6 +84,15 @@ export default function AddGame() {
         totalRounds={session.totalRounds}
       />
 
+      {(session.hintLoading || session.hint || session.hintError) && !session.feedback && (
+        <HintBanner
+          hint={session.hint}
+          loading={session.hintLoading}
+          error={session.hintError}
+          onRetry={session.retryHint}
+        />
+      )}
+
       <FeedbackBanner
         type={session.feedback?.type ?? null}
         message={session.feedback?.message ?? ""}
@@ -99,7 +120,7 @@ export default function AddGame() {
           let variant: "default" | "correct" | "wrong" = "default";
           if (session.answered && choice === round.answer) {
             variant = "correct";
-          } else if (session.answered && choice === selected && choice !== round.answer) {
+          } else if (wrongPick === choice) {
             variant = "wrong";
           }
 

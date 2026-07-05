@@ -37,18 +37,11 @@ export function buildChoices(correct: number, min: number, max: number): number[
 export const COUNT_OBJECTS = ["🍎", "⭐", "🐸", "🌸", "🎈", "🦋", "🍪", "🐠"] as const;
 
 export const PRAISE = [
-  "Amazing!",
-  "You got it!",
-  "Super star!",
-  "Way to go!",
-  "Fantastic!",
-  "Brilliant!",
-  "Awesome job!",
-] as const;
-
-export const ENCOURAGE = [
-  "Nice try! Let's go again!",
-  "Almost! You can do it!",
-  "Keep going, you've got this!",
-  "Good effort! Try the next one!",
+  "Yay!",
+  "You did it!",
+  "Great job!",
+  "Super!",
+  "Nice one!",
+  "Woohoo!",
+  "Star!",
 ] as const;
