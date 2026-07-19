@@ -2,7 +2,7 @@ type AnswerButtonProps = {
   value: number | string;
   onClick: () => void;
   disabled: boolean;
-  variant?: "default" | "correct" | "wrong";
+  variant?: "default" | "correct" | "wrong" | "highlight";
 };
 
 export default function AnswerButton({
@@ -18,6 +18,7 @@ export default function AnswerButton({
     default: "border-sky-deep bg-white text-ink hover:bg-sky-bright/20",
     correct: "border-grass-dark bg-grass text-white",
     wrong: "border-coral-dark bg-coral text-white",
+    highlight: "animate-teach-pulse border-grass-dark bg-grass/20 text-grass-dark ring-4 ring-grass/40",
   };
 
   return (

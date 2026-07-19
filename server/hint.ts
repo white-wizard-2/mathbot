@@ -1,36 +1,31 @@
 import type { HintRequest } from "../src/types/hint.js";
 import { chatCompletion } from "./omlx.js";
 
-const SYSTEM_PROMPT = `You are MathBot, a warm robot friend helping a 3-year-old with a math game on a tablet.
+const SYSTEM_PROMPT = `You are MathBot, a warm friend helping a 2–3 year old with a math game on a tablet.
 
-The child picked a wrong answer. Help them understand the question, why their pick is wrong, and what to do.
+The child picked a wrong answer. Use very simple words — like talking to a toddler.
 
-Write 3 short lines (one sentence each, very simple words):
+Write 3 tiny lines (max 6 words each):
 
-First wrong try:
-Line 1 — Explain: What the question is about. Use numbers from the question only.
-Line 2 — Why wrong: Say why picking their number does not work. Mention their wrong number.
-Line 3 — Try: One thing to do next on the screen (must match ALLOWED TRY in the user message).
+Line 1 — What to do (tap pictures, count).
+Line 2 — Their wrong pick is not right.
+Line 3 — Try again on the screen.
 
-Repeat mistake (same wrong number again):
-Line 1 — Repeat: Say the previous help again (same idea, can shorten slightly).
-Line 2 — Why wrong: Explain again why that same number is still not right.
-Line 3 — Try: Same on-screen tapping and counting idea as before.
+Repeat mistake: repeat line 1 idea, say wrong again, try again.
 
 Rules:
-- Very simple words for a 3-year-old — short sentences only
-- Friendly and patient
+- Max 6 words per line
+- Very simple words only
 - NEVER say the secret correct answer
 - NEVER say any number equal to the secret answer
-- Do not use number words for the secret answer
-- One emoji at the start of line 1 only
-- You MAY say the child's wrong pick number and question numbers (like 2, 3, 7)
-- Base everything on GAME FACTS
-- NEVER suggest counting on fingers, hands, or toes — too hard for a 3-year-old
-- Do not suggest mental math, paper, or tricks they cannot do yet`;
+- No number words for the secret answer
+- One emoji on line 1 only
+- You MAY say wrong pick and question numbers (1, 2, 3)
+- NEVER fingers, hands, toes, or mental math
+- Base everything on GAME FACTS`;
 
 const MAX_HINT_ATTEMPTS = 3;
-const MAX_HINT_WORDS = 48;
+const MAX_HINT_WORDS = 24;
 
 type HintContext = {
   gameLabel: string;
@@ -60,6 +55,14 @@ function buildTryGuidance(request: HintRequest): string {
       return `ALLOWED TRY for line 3 (pick one):
 - Tap pictures to take some away, then tap what is left and count.
 - Tap the ones to take away first, then count the rest on the screen.`;
+    case "multiply":
+      return `ALLOWED TRY for line 3 (pick one):
+- Tap each group of pictures on the screen.
+- Count all the pictures together.`;
+    case "divide":
+      return `ALLOWED TRY for line 3 (pick one):
+- Tap one equal group and count the pictures in it.
+- Look at the groups on the screen and count one group.`;
   }
 }
 
@@ -71,6 +74,10 @@ function getCorrectAnswer(request: HintRequest): number {
       return request.a + request.b;
     case "subtract":
       return request.a - request.b;
+    case "multiply":
+      return request.groups * request.each;
+    case "divide":
+      return request.total / request.groups;
   }
 }
 
@@ -104,6 +111,28 @@ function buildContext(request: HintRequest): HintContext {
       return {
         gameLabel: "Subtract",
         explainSetup: `The question is ${request.a} − ${request.b}. That means start with ${request.a} things and take ${request.b} away. Pictures appear on the screen to tap.`,
+        tryGuidance: buildTryGuidance(request),
+        picked: request.picked,
+        correctAnswer,
+        previousHint: request.previousHint,
+        isRepeatMistake: request.isRepeatMistake ?? false,
+        wrongAttempts: request.wrongAttempts ?? [request.picked],
+      };
+    case "multiply":
+      return {
+        gameLabel: "Multiply",
+        explainSetup: `The question is ${request.groups} × ${request.each}. That means ${request.groups} equal groups with ${request.each} things in each group. Pictures appear on the screen to tap and count all.`,
+        tryGuidance: buildTryGuidance(request),
+        picked: request.picked,
+        correctAnswer,
+        previousHint: request.previousHint,
+        isRepeatMistake: request.isRepeatMistake ?? false,
+        wrongAttempts: request.wrongAttempts ?? [request.picked],
+      };
+    case "divide":
+      return {
+        gameLabel: "Divide",
+        explainSetup: `The question is ${request.total} ÷ ${request.groups}. That means ${request.total} things shared equally into ${request.groups} groups. The child must find how many are in each group. Pictures appear on the screen.`,
         tryGuidance: buildTryGuidance(request),
         picked: request.picked,
         correctAnswer,
@@ -228,7 +257,7 @@ export async function generateHint(request: HintRequest): Promise<string> {
           { role: "system", content: SYSTEM_PROMPT },
           { role: "user", content: buildUserPrompt(context, attempt) },
         ],
-        { maxTokens: 96, temperature: 0.35 },
+        { maxTokens: 72, temperature: 0.35 },
       );
 
       return rejectUnrealisticAdvice(

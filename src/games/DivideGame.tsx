@@ -1,21 +1,21 @@
 import { useCallback, useState } from "react";
 import ScoreBoard from "../components/ScoreBoard";
 import GameHintPanel from "../components/GameHintPanel";
-import { AddObjectPanel } from "../components/GameObjectPanel";
-import AddTeachAnimation from "../components/AddTeachAnimation";
+import { DivideObjectPanel } from "../components/GameObjectPanel";
+import DivideTeachAnimation from "../components/DivideTeachAnimation";
 import TeachModal from "../components/TeachModal";
 import { Confetti } from "../components/Confetti";
 import AnswerButton from "../components/AnswerButton";
 import GameComplete from "../components/GameComplete";
 import { useGameSession } from "../hooks/useGameSession";
 import { useTapCount } from "../hooks/useTapCount";
-import { createAddRound } from "../lib/utils";
+import { createDivideRound } from "../lib/utils";
 import { stopSpeech } from "../lib/speech";
 
-type Round = ReturnType<typeof createAddRound>;
+type Round = ReturnType<typeof createDivideRound>;
 
-export default function AddGame() {
-  const [round, setRound] = useState<Round>(() => createAddRound());
+export default function DivideGame() {
+  const [round, setRound] = useState<Round>(() => createDivideRound());
   const [wrongPick, setWrongPick] = useState<number | null>(null);
   const [showTeachModal, setShowTeachModal] = useState(false);
   const [teachPlayKey, setTeachPlayKey] = useState(0);
@@ -37,7 +37,7 @@ export default function AddGame() {
   }, [tapCount]);
 
   const nextRound = useCallback(() => {
-    setRound(createAddRound());
+    setRound(createDivideRound());
     resetRoundState();
   }, [resetRoundState]);
 
@@ -51,9 +51,9 @@ export default function AddGame() {
     session.handleAnswer(isCorrect, {
       onNextRound: nextRound,
       hintRequest: {
-        game: "add",
-        a: round.a,
-        b: round.b,
+        game: "divide",
+        total: round.total,
+        groups: round.groups,
         picked: choice,
       },
     });
@@ -70,7 +70,7 @@ export default function AddGame() {
           session.resetGame();
           nextRound();
         }}
-        emoji="➕"
+        emoji="➗"
       />
     );
   }
@@ -81,29 +81,29 @@ export default function AddGame() {
 
       <TeachModal
         open={showTeachModal}
-        title="➕ Put them together!"
-        theme="add"
+        title="➗ Share equally!"
+        theme="divide"
         onClose={() => {
           setShowTeachModal(false);
           setHighlightAnswer(true);
         }}
         onReplay={() => setTeachPlayKey((key) => key + 1)}
       >
-        <AddTeachAnimation
+        <DivideTeachAnimation
           emoji={round.emoji}
-          a={round.a}
-          b={round.b}
+          total={round.total}
+          groups={round.groups}
           answer={round.answer}
           playKey={teachPlayKey}
         />
       </TeachModal>
 
       <div className="mb-6 text-center">
-        <h1 className="text-3xl font-bold text-sunshine-dark md:text-4xl">
-          ➕ Add
+        <h1 className="text-3xl font-bold text-sky-deep md:text-4xl">
+          ➗ Share
         </h1>
         <p className="mt-2 text-lg font-medium text-ink/70">
-          How many altogether?
+          How many in each group?
         </p>
       </div>
 
@@ -116,19 +116,23 @@ export default function AddGame() {
 
       <GameHintPanel session={session} />
 
-      <div className="mx-auto mb-4 max-w-md">
-        <p className="text-center text-2xl font-bold text-sunshine-dark md:text-3xl">
-          {round.a} + {round.b} = ?
+      <div className="mx-auto mb-4 max-w-lg">
+        <p className="text-center text-2xl font-bold text-sky-deep md:text-3xl">
+          {round.total} ÷ {round.groups} = ?
         </p>
 
-        <AddObjectPanel
+        <DivideObjectPanel
           emoji={round.emoji}
-          a={round.a}
-          b={round.b}
+          total={round.total}
+          groups={round.groups}
+          each={round.answer}
           disabled={tapDisabled}
           tapped={tapCount.tapped}
           labels={tapCount.labels}
-          onTap={(index) => tapCount.handleTap(index, tapDisabled)}
+          onTap={(index) => {
+            if (index >= round.answer) return;
+            tapCount.handleTap(index, tapDisabled);
+          }}
         />
 
         {wrongPick !== null && (
@@ -136,7 +140,7 @@ export default function AddGame() {
             <button
               type="button"
               onClick={openTeach}
-              className="btn-3d animate-teach-pulse rounded-2xl border-4 border-sunshine-dark bg-sunshine px-6 py-3 text-lg font-bold text-white md:text-xl"
+              className="btn-3d animate-teach-pulse rounded-2xl border-4 border-sky-deep bg-sky-bright px-6 py-3 text-lg font-bold text-white md:text-xl"
             >
               📚 Show me how
             </button>

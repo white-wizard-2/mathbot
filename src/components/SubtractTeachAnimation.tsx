@@ -37,13 +37,13 @@ export default function SubtractTeachAnimation({
   const caption = useMemo(() => {
     switch (step) {
       case "see-all":
-        return `You start with ${total}. Tap "Ready!" when you see them all.`;
+        return `Look! ${total} here. Tap Ready!`;
       case "take-away":
-        return `Step 1: Tap ${takeAway} to take away. One tap = one goes away!`;
+        return `Tap ${takeAway} to take away!`;
       case "count-left":
-        return `Step 2: Tap what's left and count. How many are left?`;
+        return `Tap what's left. Count them!`;
       case "done":
-        return `${total} take away ${takeAway} leaves ${answer}!`;
+        return `${answer} left!`;
     }
   }, [step, total, takeAway, answer]);
 
@@ -200,7 +200,7 @@ export default function SubtractTeachAnimation({
 
       {step === "see-all" && (
         <div className="flex justify-center pt-2">
-          <TeachNextButton theme="subtract" label="Ready! Let's go →" onClick={goNext} />
+          <TeachNextButton theme="subtract" label="Ready! →" onClick={goNext} />
         </div>
       )}
 
@@ -208,7 +208,7 @@ export default function SubtractTeachAnimation({
         <div className="flex justify-center pt-2">
           <TeachNextButton
             theme="subtract"
-            label={step === "count-left" ? "See the answer! ✨" : "Count what's left →"}
+            label={step === "count-left" ? "See answer! ✨" : "Count left →"}
             onClick={goNext}
           />
         </div>

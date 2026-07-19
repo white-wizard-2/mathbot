@@ -1,21 +1,21 @@
 import { useCallback, useState } from "react";
 import ScoreBoard from "../components/ScoreBoard";
 import GameHintPanel from "../components/GameHintPanel";
-import { AddObjectPanel } from "../components/GameObjectPanel";
-import AddTeachAnimation from "../components/AddTeachAnimation";
+import { MultiplyObjectPanel } from "../components/GameObjectPanel";
+import MultiplyTeachAnimation from "../components/MultiplyTeachAnimation";
 import TeachModal from "../components/TeachModal";
 import { Confetti } from "../components/Confetti";
 import AnswerButton from "../components/AnswerButton";
 import GameComplete from "../components/GameComplete";
 import { useGameSession } from "../hooks/useGameSession";
 import { useTapCount } from "../hooks/useTapCount";
-import { createAddRound } from "../lib/utils";
+import { createMultiplyRound } from "../lib/utils";
 import { stopSpeech } from "../lib/speech";
 
-type Round = ReturnType<typeof createAddRound>;
+type Round = ReturnType<typeof createMultiplyRound>;
 
-export default function AddGame() {
-  const [round, setRound] = useState<Round>(() => createAddRound());
+export default function MultiplyGame() {
+  const [round, setRound] = useState<Round>(() => createMultiplyRound());
   const [wrongPick, setWrongPick] = useState<number | null>(null);
   const [showTeachModal, setShowTeachModal] = useState(false);
   const [teachPlayKey, setTeachPlayKey] = useState(0);
@@ -37,7 +37,7 @@ export default function AddGame() {
   }, [tapCount]);
 
   const nextRound = useCallback(() => {
-    setRound(createAddRound());
+    setRound(createMultiplyRound());
     resetRoundState();
   }, [resetRoundState]);
 
@@ -51,9 +51,9 @@ export default function AddGame() {
     session.handleAnswer(isCorrect, {
       onNextRound: nextRound,
       hintRequest: {
-        game: "add",
-        a: round.a,
-        b: round.b,
+        game: "multiply",
+        groups: round.groups,
+        each: round.each,
         picked: choice,
       },
     });
@@ -70,7 +70,7 @@ export default function AddGame() {
           session.resetGame();
           nextRound();
         }}
-        emoji="➕"
+        emoji="✖️"
       />
     );
   }
@@ -81,29 +81,29 @@ export default function AddGame() {
 
       <TeachModal
         open={showTeachModal}
-        title="➕ Put them together!"
-        theme="add"
+        title="✖️ Groups of things!"
+        theme="multiply"
         onClose={() => {
           setShowTeachModal(false);
           setHighlightAnswer(true);
         }}
         onReplay={() => setTeachPlayKey((key) => key + 1)}
       >
-        <AddTeachAnimation
+        <MultiplyTeachAnimation
           emoji={round.emoji}
-          a={round.a}
-          b={round.b}
+          groups={round.groups}
+          each={round.each}
           answer={round.answer}
           playKey={teachPlayKey}
         />
       </TeachModal>
 
       <div className="mb-6 text-center">
-        <h1 className="text-3xl font-bold text-sunshine-dark md:text-4xl">
-          ➕ Add
+        <h1 className="text-3xl font-bold text-lavender-dark md:text-4xl">
+          ✖️ Groups
         </h1>
         <p className="mt-2 text-lg font-medium text-ink/70">
-          How many altogether?
+          How many in all?
         </p>
       </div>
 
@@ -116,15 +116,15 @@ export default function AddGame() {
 
       <GameHintPanel session={session} />
 
-      <div className="mx-auto mb-4 max-w-md">
-        <p className="text-center text-2xl font-bold text-sunshine-dark md:text-3xl">
-          {round.a} + {round.b} = ?
+      <div className="mx-auto mb-4 max-w-lg">
+        <p className="text-center text-2xl font-bold text-lavender-dark md:text-3xl">
+          {round.groups} × {round.each} = ?
         </p>
 
-        <AddObjectPanel
+        <MultiplyObjectPanel
           emoji={round.emoji}
-          a={round.a}
-          b={round.b}
+          groups={round.groups}
+          each={round.each}
           disabled={tapDisabled}
           tapped={tapCount.tapped}
           labels={tapCount.labels}
@@ -136,7 +136,7 @@ export default function AddGame() {
             <button
               type="button"
               onClick={openTeach}
-              className="btn-3d animate-teach-pulse rounded-2xl border-4 border-sunshine-dark bg-sunshine px-6 py-3 text-lg font-bold text-white md:text-xl"
+              className="btn-3d animate-teach-pulse rounded-2xl border-4 border-lavender-dark bg-lavender px-6 py-3 text-lg font-bold text-white md:text-xl"
             >
               📚 Show me how
             </button>

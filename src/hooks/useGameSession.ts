@@ -1,10 +1,11 @@
 import { useCallback, useRef, useState } from "react";
 import { fetchHint } from "../api/hint";
+import { AGE } from "../lib/ageConfig";
 import { PRAISE, pickRandom } from "../lib/utils";
 import { speak, stopSpeech } from "../lib/speech";
 import type { HintRequest } from "../types/hint";
 
-const TOTAL_ROUNDS = 10;
+const TOTAL_ROUNDS = AGE.totalRounds;
 const CORRECT_DELAY_MS = 1400;
 
 type FeedbackState = {

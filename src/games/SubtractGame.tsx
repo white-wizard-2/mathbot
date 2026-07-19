@@ -1,37 +1,26 @@
 import { useCallback, useState } from "react";
 import ScoreBoard from "../components/ScoreBoard";
 import GameHintPanel from "../components/GameHintPanel";
+import { SubtractObjectPanel } from "../components/GameObjectPanel";
 import SubtractTeachAnimation from "../components/SubtractTeachAnimation";
 import TeachModal from "../components/TeachModal";
 import { Confetti } from "../components/Confetti";
 import AnswerButton from "../components/AnswerButton";
 import GameComplete from "../components/GameComplete";
 import { useGameSession } from "../hooks/useGameSession";
-import { buildChoices, COUNT_OBJECTS, pickRandom, randomInt } from "../lib/utils";
+import { useTapCount } from "../hooks/useTapCount";
+import { createSubtractRound } from "../lib/utils";
 import { stopSpeech } from "../lib/speech";
 
-type Round = {
-  a: number;
-  b: number;
-  answer: number;
-  choices: number[];
-  emoji: string;
-};
-
-function createRound(): Round {
-  const a = randomInt(2, 10);
-  const b = randomInt(1, a);
-  const answer = a - b;
-  const choices = buildChoices(answer, 0, 10);
-
-  return { a, b, answer, choices, emoji: pickRandom(COUNT_OBJECTS) };
-}
+type Round = ReturnType<typeof createSubtractRound>;
 
 export default function SubtractGame() {
-  const [round, setRound] = useState<Round>(() => createRound());
+  const [round, setRound] = useState<Round>(() => createSubtractRound());
   const [wrongPick, setWrongPick] = useState<number | null>(null);
   const [showTeachModal, setShowTeachModal] = useState(false);
   const [teachPlayKey, setTeachPlayKey] = useState(0);
+  const [highlightAnswer, setHighlightAnswer] = useState(false);
+  const tapCount = useTapCount();
   const session = useGameSession();
 
   const openTeach = useCallback(() => {
@@ -43,10 +32,12 @@ export default function SubtractGame() {
   const resetRoundState = useCallback(() => {
     setWrongPick(null);
     setShowTeachModal(false);
-  }, []);
+    setHighlightAnswer(false);
+    tapCount.reset();
+  }, [tapCount]);
 
   const nextRound = useCallback(() => {
-    setRound(createRound());
+    setRound(createSubtractRound());
     resetRoundState();
   }, [resetRoundState]);
 
@@ -55,6 +46,7 @@ export default function SubtractGame() {
     const isCorrect = choice === round.answer;
     if (!isCorrect) {
       setWrongPick(choice);
+      setHighlightAnswer(false);
     }
     session.handleAnswer(isCorrect, {
       onNextRound: nextRound,
@@ -66,6 +58,8 @@ export default function SubtractGame() {
       },
     });
   };
+
+  const tapDisabled = session.answered || session.hintLoading;
 
   if (session.gameComplete) {
     return (
@@ -87,9 +81,12 @@ export default function SubtractGame() {
 
       <TeachModal
         open={showTeachModal}
-        title="➖ Let's Subtract!"
+        title="➖ Take some away!"
         theme="subtract"
-        onClose={() => setShowTeachModal(false)}
+        onClose={() => {
+          setShowTeachModal(false);
+          setHighlightAnswer(true);
+        }}
         onReplay={() => setTeachPlayKey((key) => key + 1)}
       >
         <SubtractTeachAnimation
@@ -103,10 +100,10 @@ export default function SubtractGame() {
 
       <div className="mb-6 text-center">
         <h1 className="text-3xl font-bold text-coral-dark md:text-4xl">
-          ➖ Subtract Game
+          ➖ Take away
         </h1>
         <p className="mt-2 text-lg font-medium text-ink/70">
-          Take some away — what&apos;s left?
+          How many are left?
         </p>
       </div>
 
@@ -120,43 +117,50 @@ export default function SubtractGame() {
       <GameHintPanel session={session} />
 
       <div className="mx-auto mb-4 max-w-lg">
-        <div className="flex items-center justify-center gap-4 md:gap-6">
-          <div className="animate-bounce-in flex h-24 w-24 items-center justify-center rounded-2xl border-4 border-coral-dark bg-coral text-5xl font-bold text-white shadow-lg md:h-28 md:w-28 md:text-6xl">
-            {round.a}
-          </div>
-          <span className="text-5xl font-bold text-coral-dark md:text-6xl">−</span>
-          <div
-            className="animate-bounce-in flex h-24 w-24 items-center justify-center rounded-2xl border-4 border-coral-dark bg-coral text-5xl font-bold text-white shadow-lg md:h-28 md:w-28 md:text-6xl"
-            style={{ animationDelay: "100ms", opacity: 0 }}
-          >
-            {round.b}
-          </div>
-          <span className="text-5xl font-bold text-ink/40 md:text-6xl">=</span>
-          <div className="flex h-24 w-24 items-center justify-center rounded-2xl border-4 border-dashed border-coral-dark/50 bg-white/60 text-5xl font-bold text-ink/30 md:h-28 md:w-28 md:text-6xl">
-            ?
-          </div>
-        </div>
+        <p className="text-center text-2xl font-bold text-coral-dark md:text-3xl">
+          {round.a} − {round.b} = ?
+        </p>
+
+        <SubtractObjectPanel
+          emoji={round.emoji}
+          total={round.a}
+          takeAway={round.b}
+          disabled={tapDisabled}
+          tapped={tapCount.tapped}
+          labels={tapCount.labels}
+          onTap={(index) => {
+            if (index < round.b) return;
+            tapCount.handleTap(index, tapDisabled);
+          }}
+        />
 
         {wrongPick !== null && (
-          <div className="mt-5 flex justify-center">
+          <div className="mt-5 flex flex-col items-center gap-2">
             <button
               type="button"
               onClick={openTeach}
-              className="btn-3d rounded-2xl border-4 border-coral-dark bg-white px-5 py-2 text-base font-bold text-coral-dark hover:bg-coral/20 md:text-lg"
+              className="btn-3d animate-teach-pulse rounded-2xl border-4 border-coral-dark bg-coral px-6 py-3 text-lg font-bold text-white md:text-xl"
             >
-              📚 Teach me
+              📚 Show me how
             </button>
+            {highlightAnswer && (
+              <p className="text-base font-bold text-grass-dark md:text-lg">
+                Now tap the number!
+              </p>
+            )}
           </div>
         )}
       </div>
 
       <div className="flex flex-wrap justify-center gap-4">
         {round.choices.map((choice) => {
-          let variant: "default" | "correct" | "wrong" = "default";
+          let variant: "default" | "correct" | "wrong" | "highlight" = "default";
           if (session.feedback && choice === round.answer) {
             variant = "correct";
           } else if (wrongPick === choice) {
             variant = "wrong";
+          } else if (highlightAnswer && choice === round.answer) {
+            variant = "highlight";
           }
 
           return (

@@ -1,71 +1,32 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import ScoreBoard from "../components/ScoreBoard";
 import GameHintPanel from "../components/GameHintPanel";
 import { Confetti } from "../components/Confetti";
 import AnswerButton from "../components/AnswerButton";
 import GameComplete from "../components/GameComplete";
 import { useGameSession } from "../hooks/useGameSession";
-import {
-  buildChoices,
-  COUNT_OBJECTS,
-  pickRandom,
-  randomInt,
-} from "../lib/utils";
+import { useTapCount } from "../hooks/useTapCount";
+import { createCountRound } from "../lib/utils";
 
-type Round = {
-  object: string;
-  count: number;
-  choices: number[];
-};
-
-type VanishLabel = {
-  id: number;
-  index: number;
-  value: number;
-};
-
-function createRound(): Round {
-  const count = randomInt(1, 10);
-  const object = pickRandom(COUNT_OBJECTS);
-  const choices = buildChoices(count, 0, 12);
-
-  return { object, count, choices };
-}
+type Round = ReturnType<typeof createCountRound>;
 
 export default function CountGame() {
-  const [round, setRound] = useState<Round>(() => createRound());
+  const [round, setRound] = useState<Round>(() => createCountRound());
   const [wrongPick, setWrongPick] = useState<number | null>(null);
-  const [tappedIndices, setTappedIndices] = useState<Set<number>>(() => new Set());
-  const [vanishLabels, setVanishLabels] = useState<VanishLabel[]>([]);
-  const labelId = useRef(0);
+  const tapCount = useTapCount();
   const session = useGameSession();
 
-  const resetTapState = useCallback(() => {
-    setTappedIndices(new Set());
-    setVanishLabels([]);
-  }, []);
+  const resetRoundState = useCallback(() => {
+    setWrongPick(null);
+    tapCount.reset();
+  }, [tapCount]);
 
   const nextRound = useCallback(() => {
-    setRound(createRound());
-    setWrongPick(null);
-    resetTapState();
-  }, [resetTapState]);
+    setRound(createCountRound());
+    resetRoundState();
+  }, [resetRoundState]);
 
-  const handleObjectTap = (index: number) => {
-    if (session.answered || session.hintLoading) return;
-    if (tappedIndices.has(index)) return;
-
-    const value = tappedIndices.size + 1;
-    const id = labelId.current + 1;
-    labelId.current = id;
-
-    setTappedIndices((prev) => new Set(prev).add(index));
-    setVanishLabels((prev) => [...prev, { id, index, value }]);
-
-    window.setTimeout(() => {
-      setVanishLabels((prev) => prev.filter((label) => label.id !== id));
-    }, 900);
-  };
+  const tapDisabled = session.answered || session.hintLoading;
 
   const handleChoice = (choice: number) => {
     if (session.answered || session.hintLoading) return;
@@ -104,10 +65,10 @@ export default function CountGame() {
 
       <div className="mb-6 text-center">
         <h1 className="text-3xl font-bold text-grass-dark md:text-4xl">
-          🔢 Count Game
+          🔢 Count
         </h1>
         <p className="mt-2 text-lg font-medium text-ink/70">
-          Tap each one and count!
+          Tap each one. How many?
         </p>
       </div>
 
@@ -123,15 +84,15 @@ export default function CountGame() {
       <div className="mx-auto mb-8 max-w-lg rounded-3xl border-4 border-grass-dark/40 bg-white/80 p-6 shadow-lg backdrop-blur-sm md:p-8">
         <div className="flex flex-wrap justify-center gap-3 md:gap-4">
           {Array.from({ length: round.count }, (_, index) => {
-            const isTapped = tappedIndices.has(index);
-            const activeLabels = vanishLabels.filter((label) => label.index === index);
+            const isTapped = tapCount.tapped.has(index);
+            const activeLabels = tapCount.labels.filter((label) => label.index === index);
 
             return (
               <button
                 key={index}
                 type="button"
-                onClick={() => handleObjectTap(index)}
-                disabled={session.answered || session.hintLoading}
+                onClick={() => tapCount.handleTap(index, tapDisabled)}
+                disabled={tapDisabled}
                 className={`animate-bounce-in relative inline-flex h-16 w-16 items-center justify-center rounded-2xl border-4 text-4xl transition md:h-20 md:w-20 md:text-5xl ${
                   isTapped
                     ? "border-grass bg-grass/20 scale-95"

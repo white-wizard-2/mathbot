@@ -5,7 +5,7 @@ type TeachObjectTileProps = {
   isRemoved?: boolean;
   isNext?: boolean;
   countLabel?: number;
-  accent: "sunshine" | "coral" | "grass";
+  accent: "sunshine" | "coral" | "grass" | "lavender" | "sky";
   onClick: () => void;
 };
 
@@ -27,6 +27,18 @@ const accentStyles = {
     next: "animate-teach-pulse border-grass-dark bg-grass/20 ring-4 ring-grass/40",
     done: "border-grass-dark bg-grass/30 scale-95",
     label: "text-grass-dark",
+  },
+  lavender: {
+    idle: "border-lavender-dark/35 bg-white hover:scale-105 active:scale-95",
+    next: "animate-teach-pulse border-lavender-dark bg-lavender/20 ring-4 ring-lavender/40",
+    done: "border-lavender-dark bg-lavender/30 scale-95",
+    label: "text-lavender-dark",
+  },
+  sky: {
+    idle: "border-sky-deep/35 bg-white hover:scale-105 active:scale-95",
+    next: "animate-teach-pulse border-sky-deep bg-sky-bright/20 ring-4 ring-sky-bright/40",
+    done: "border-sky-deep bg-sky-bright/30 scale-95",
+    label: "text-sky-deep",
   },
 };
 
@@ -78,12 +90,16 @@ export function TeachNextButton({
 }: {
   label: string;
   onClick: () => void;
-  theme: "add" | "subtract";
+  theme: "add" | "subtract" | "multiply" | "divide";
 }) {
   const themeClass =
     theme === "add"
       ? "border-sunshine-dark bg-sunshine text-white hover:bg-sunshine-dark"
-      : "border-coral-dark bg-coral text-white hover:bg-coral-dark";
+      : theme === "subtract"
+        ? "border-coral-dark bg-coral text-white hover:bg-coral-dark"
+        : theme === "multiply"
+          ? "border-lavender-dark bg-lavender text-white hover:bg-lavender-dark"
+          : "border-sky-deep bg-sky-bright text-white hover:bg-sky-deep";
 
   return (
     <button

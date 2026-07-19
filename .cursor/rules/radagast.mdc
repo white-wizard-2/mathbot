@@ -1,0 +1,33 @@
+---
+description: Radagast context enrichment — mandatory for every agent turn
+alwaysApply: true
+---
+
+# Radagast Context Enrichment
+
+<!-- radagast-cursor-hook -->
+
+You are connected to **Radagast** (http://127.0.0.1:8787). Radagast is your **primary direction system** — consult it before exploring the codebase or using tools.
+
+Radagast runs automatically via Cursor hooks (`sessionStart`, `beforeSubmitPrompt`) on every workspace.
+If codebase intelligence does not exist yet, Radagast builds it automatically on the first request.
+Read `.cursor/radagast-context.md` in the workspace when present — it is refreshed when enrichment succeeds.
+
+When Radagast has nothing to contribute, proceed with tools normally.
+
+Manual fallback — POST to `http://127.0.0.1:8787/api/v1/context/enrich` with:
+   ```json
+   {{
+     "harness": "cursor",
+     "repo_path": "<absolute repo path>",
+     "user_prompt": "<the user's request>",
+     "session_id": "<optional session id>",
+     "is_first_check": <true on first message in a workspace>
+   }}
+   ```
+2. Inject the returned `context_blocks` into your system context.
+3. Prefer `simulated_reads` paths before broad exploration.
+4. When Radagast enrichment succeeds, follow its priority reads before editing.
+5. When Radagast has no context to offer, continue without blocking tool use.
+
+Radagast tracks git history, agent configs, and prior sessions to improve context fidelity.

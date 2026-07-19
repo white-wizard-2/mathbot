@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-type TeachTheme = "add" | "subtract";
+type TeachTheme = "add" | "subtract" | "multiply" | "divide";
 
 type TeachModalProps = {
   open: boolean;
@@ -21,6 +21,16 @@ const themeStyles: Record<TeachTheme, { panel: string; title: string; replay: st
     panel: "border-coral-dark/50 bg-gradient-to-b from-white to-coral/10",
     title: "text-coral-dark",
     replay: "border-coral-dark bg-coral text-white hover:bg-coral-dark",
+  },
+  multiply: {
+    panel: "border-lavender-dark/50 bg-gradient-to-b from-white to-lavender/10",
+    title: "text-lavender-dark",
+    replay: "border-lavender-dark bg-lavender text-white hover:bg-lavender-dark",
+  },
+  divide: {
+    panel: "border-sky-deep/50 bg-gradient-to-b from-white to-sky-bright/10",
+    title: "text-sky-deep",
+    replay: "border-sky-deep bg-sky-bright text-white hover:bg-sky-deep",
   },
 };
 

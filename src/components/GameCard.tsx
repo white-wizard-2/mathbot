@@ -4,7 +4,7 @@ type GameCardProps = {
   title: string;
   description: string;
   emoji: string;
-  color: "grass" | "sunshine" | "coral" | "lavender";
+  color: "grass" | "sunshine" | "coral" | "lavender" | "sky";
   path: string;
   delay: number;
 };
@@ -29,6 +29,11 @@ const COLOR_MAP = {
     bg: "bg-lavender",
     border: "border-lavender-dark",
     hover: "hover:bg-lavender-dark",
+  },
+  sky: {
+    bg: "bg-sky-bright",
+    border: "border-sky-deep",
+    hover: "hover:bg-sky-deep",
   },
 } as const;
 

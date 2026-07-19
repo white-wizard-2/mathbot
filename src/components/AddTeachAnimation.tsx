@@ -31,13 +31,13 @@ export default function AddTeachAnimation({ emoji, a, b, answer, playKey }: AddT
   const caption = useMemo(() => {
     switch (step) {
       case "first-group":
-        return `Step 1: Tap each one in the first group. Count to ${a}!`;
+        return `Tap each one here! Count to ${a}.`;
       case "second-group":
-        return `Step 2: Tap each one in the second group. Count ${b} more!`;
+        return `Now tap these! Count ${b} more.`;
       case "count-all":
-        return `Step 3: Tap every one from the start. Count all the way to ${total}!`;
+        return `Tap every one! Count to ${total}.`;
       case "done":
-        return `${a} and ${b} together make ${answer}!`;
+        return `All together — ${answer}!`;
     }
   }, [step, a, b, total, answer]);
 
@@ -123,8 +123,8 @@ export default function AddTeachAnimation({ emoji, a, b, answer, playKey }: AddT
                 : "border-lavender-dark/40 bg-lavender/10"
             }`}
           >
-            <p className="mb-3 text-center text-sm font-bold uppercase tracking-wide text-ink/60 md:text-base">
-              {step === "first-group" ? `First group · ${a}` : `Second group · ${b}`}
+            <p className="mb-3 text-center text-sm font-bold text-ink/60 md:text-base">
+              {step === "first-group" ? `This group` : `More here`}
             </p>
             <div className="flex flex-wrap justify-center gap-2 md:gap-3">
               {Array.from({ length: step === "first-group" ? a : b }, (_, offset) => {
@@ -148,8 +148,8 @@ export default function AddTeachAnimation({ emoji, a, b, answer, playKey }: AddT
 
         {(step === "count-all" || step === "done") && (
           <div className="rounded-3xl border-4 border-grass-dark/40 bg-grass/10 p-4">
-            <p className="mb-3 text-center text-sm font-bold uppercase tracking-wide text-ink/60 md:text-base">
-              Both groups together
+            <p className="mb-3 text-center text-sm font-bold text-ink/60 md:text-base">
+              All of them!
             </p>
             <div className="flex flex-wrap items-center justify-center gap-2 md:gap-3">
               <div className="flex flex-wrap justify-center gap-2">
@@ -209,7 +209,7 @@ export default function AddTeachAnimation({ emoji, a, b, answer, playKey }: AddT
         <div className="flex justify-center pt-2">
           <TeachNextButton
             theme="add"
-            label={step === "count-all" ? "See the answer! ✨" : "Next step →"}
+            label={step === "count-all" ? "See answer! ✨" : "Next →"}
             onClick={goNext}
           />
         </div>

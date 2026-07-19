@@ -1,3 +1,5 @@
+import { AGE } from "./ageConfig";
+
 export function randomInt(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
@@ -45,3 +47,50 @@ export const PRAISE = [
   "Woohoo!",
   "Star!",
 ] as const;
+
+export function createCountRound() {
+  const count = randomInt(1, AGE.maxCount);
+  const object = pickRandom(COUNT_OBJECTS);
+  const choices = buildChoices(count, AGE.choiceMin, AGE.choiceMax);
+  return { object, count, choices };
+}
+
+export function createAddRound() {
+  const answer = randomInt(2, AGE.maxAddTotal);
+  const a = randomInt(1, answer - 1);
+  const b = answer - a;
+  const choices = buildChoices(answer, AGE.choiceMin, AGE.choiceMax);
+  return { a, b, answer, choices, emoji: pickRandom(COUNT_OBJECTS) };
+}
+
+export function createSubtractRound() {
+  const a = randomInt(2, AGE.maxSubtractStart);
+  const b = randomInt(1, Math.min(a - 1, AGE.maxSubtractTake));
+  const answer = a - b;
+  const choices = buildChoices(answer, AGE.choiceMin, AGE.choiceMax);
+  return { a, b, answer, choices, emoji: pickRandom(COUNT_OBJECTS) };
+}
+
+const MULTIPLY_ROUNDS = [
+  { groups: 2, each: 2, answer: 4 },
+  { groups: 2, each: 3, answer: 6 },
+  { groups: 3, each: 2, answer: 6 },
+] as const;
+
+const DIVIDE_ROUNDS = [
+  { total: 4, groups: 2, answer: 2 },
+  { total: 6, groups: 2, answer: 3 },
+  { total: 6, groups: 3, answer: 2 },
+] as const;
+
+export function createMultiplyRound() {
+  const base = pickRandom(MULTIPLY_ROUNDS);
+  const choices = buildChoices(base.answer, AGE.choiceMin, AGE.choiceMax);
+  return { ...base, choices, emoji: pickRandom(COUNT_OBJECTS) };
+}
+
+export function createDivideRound() {
+  const base = pickRandom(DIVIDE_ROUNDS);
+  const choices = buildChoices(base.answer, AGE.choiceMin, AGE.choiceMax);
+  return { ...base, choices, emoji: pickRandom(COUNT_OBJECTS) };
+}

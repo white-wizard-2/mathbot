@@ -1,0 +1,47 @@
+{
+  "hooks": {
+    "beforeSubmitPrompt": [
+      {
+        "command": "./hooks/radagast-hook.sh",
+        "timeout": 15
+      }
+    ],
+    "postToolUse": [
+      {
+        "command": "./hooks/radagast-hook.sh",
+        "timeout": 15
+      }
+    ],
+    "postToolUseFailure": [
+      {
+        "command": "./hooks/radagast-hook.sh",
+        "timeout": 15
+      }
+    ],
+    "preToolUse": [
+      {
+        "command": "./hooks/radagast-hook.sh",
+        "timeout": 15
+      }
+    ],
+    "sessionEnd": [
+      {
+        "command": "./hooks/radagast-hook.sh",
+        "timeout": 15
+      }
+    ],
+    "sessionStart": [
+      {
+        "command": "./hooks/radagast-hook.sh",
+        "timeout": 15
+      }
+    ],
+    "stop": [
+      {
+        "command": "./hooks/radagast-hook.sh",
+        "timeout": 15
+      }
+    ]
+  },
+  "version": 1
+}

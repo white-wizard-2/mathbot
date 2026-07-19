@@ -8,7 +8,9 @@ export type HintBase = {
 export type HintRequest =
   | (HintBase & { game: "count"; object: string; total: number })
   | (HintBase & { game: "add"; a: number; b: number })
-  | (HintBase & { game: "subtract"; a: number; b: number });
+  | (HintBase & { game: "subtract"; a: number; b: number })
+  | (HintBase & { game: "multiply"; groups: number; each: number })
+  | (HintBase & { game: "divide"; total: number; groups: number });
 
 export type HintResponse = {
   message: string;
